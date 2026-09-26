@@ -4,6 +4,17 @@ All notable changes to this project are documented in this file. The format is
 based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this
 project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.1] - 2026-09-27
+
+### Fixed
+- `retrieveMediaFile` / `deleteMediaFile`: replace the removed
+  `MediaManager.read_data` (anki 26.x) with a direct disk read of the media
+  dir, and route deletions through `trash_files` as upstream Anki-Connect
+  does (`1fd7779`).
+- Sanitize media filenames (basename + NFC + illegal-char stripping) for
+  retrieve/delete, closing a path-traversal vector in `retrieveMediaFile`
+  (`1fd7779`).
+
 ## [0.3.0] - 2026-08-05
 
 ### Added

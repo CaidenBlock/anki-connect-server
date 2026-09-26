@@ -7,7 +7,9 @@ import logging
 import re
 import threading
 import time
+import unicodedata
 from collections.abc import Callable
+from pathlib import Path
 from typing import Any, cast
 
 from anki.collection import Collection
@@ -687,15 +689,39 @@ class AnkiWrapper:
         file_data = base64.b64decode(data)
         self.col.media.write_data(filename, file_data)
 
+    def _sanitize_media_filename(self, filename: str) -> str:
+        """Normalize a media filename the same way Anki-Connect does.
+
+        basename() blocks traversal, NFC avoids duplicate files from
+        decomposed Unicode, and illegal chars are stripped (mirrors
+        MediaManager._legacy_strip_illegal, kept by anki for AnkiConnect).
+        """
+        filename = Path(filename).name
+        if filename in (".", ".."):
+            return ""
+        filename = unicodedata.normalize("NFC", filename)
+        return re.sub(r'[][><:"/?*^\\|\0\r\n]', "", filename)
+
     def retrieve_media_file(self, filename: str) -> str | None:
+        """Read a media file and return it base64-encoded, or None if missing.
+
+        MediaManager has no read API (anki 26.x); the file lives directly in
+        the media dir, so read it from disk after basename/NFC/illegal-char
+        sanitization, matching upstream Anki-Connect.
+        """
+        filename = self._sanitize_media_filename(filename)
+        if not filename:
+            return None
         try:
-            data = cast(bytes, self.col.media.read_data(filename))  # type: ignore[union-attr]
-            return base64.b64encode(data).decode()
-        except Exception:
+            if not self.col.media.have(filename):
+                return None
+            path = Path(self.col.media.dir()) / filename
+            return base64.b64encode(path.read_bytes()).decode()
+        except OSError:
             return None
 
     def delete_media_file(self, filename: str) -> None:
-        self.col.media.delete_file(filename)  # type: ignore[union-attr]
+        self.col.media.trash_files([self._sanitize_media_filename(filename)])
 
     def import_package(self, path: str) -> JsonObject:
         return cast(JsonObject, self.col.import_anki_package(path))  # type: ignore[call-arg]
