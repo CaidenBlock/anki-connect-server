@@ -2,8 +2,11 @@
 
 import os
 import tempfile
+from typing import cast
 
 import pytest
+
+from anki_connect_server.types import JsonObject
 
 
 @pytest.fixture
@@ -300,8 +303,6 @@ class TestMCPWrapper:
 
     def test_model_field_errors(self):
         """Field operations raise for unknown model/field or duplicate field."""
-        import pytest
-
         from anki_connect_server.mcp_server import (
             model_add_field,
             model_remove_field,
@@ -326,8 +327,11 @@ class TestMCPWrapper:
         assert note_id is not None
         assert update_note_fields(note_id, {"Front": "New"}) is True
         info = get_notes_info([note_id])[0]
-        assert info["fields"]["Front"]["value"] == "New"
-        assert info["fields"]["Back"]["value"] == "B"
+        fields = cast(dict[str, JsonObject], info["fields"])
+        front = fields["Front"]
+        back = fields["Back"]
+        assert front["value"] == "New"
+        assert back["value"] == "B"
 
     def test_update_model_templates_and_styling(self):
         """Test update_model_templates / update_model_styling MCP tools."""

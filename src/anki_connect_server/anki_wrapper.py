@@ -18,6 +18,7 @@ from anki.decks import DeckConfigDict, DeckConfigId, DeckId
 from anki.models import FieldDict, NotetypeDict, NotetypeId, TemplateDict
 from anki.notes import Note, NoteId
 from anki.sync_pb2 import MediaSyncStatusResponse, SyncCollectionResponse
+from httpx import Client, HTTPError
 
 from anki_connect_server.config import get_config
 from anki_connect_server.sync import (
@@ -727,9 +728,35 @@ class AnkiWrapper:
     def get_media_dir_path(self) -> str:
         return self.col.media.dir()
 
-    def store_media_file(self, filename: str, data: str) -> None:
-        file_data = base64.b64decode(data)
+    def store_media_file(self, filename: str, data: str, url: str = "", path: str = "") -> None:
+        """Store media from base64 data, a URL, or a server-side file path.
+
+        Mirrors upstream Anki-Connect: exactly one source must be provided,
+        with data taking precedence over url and path.
+        """
+        if data:
+            file_data = base64.b64decode(data)
+        elif url:
+            file_data = self._download_media(url)
+        elif path:
+            try:
+                file_data = Path(path).read_bytes()
+            except OSError as error:
+                raise ValueError(f"Cannot read media file at {path}: {error}") from error
+        else:
+            raise ValueError("One of data, url or path is required")
         self.col.media.write_data(filename, file_data)
+
+    @staticmethod
+    def _download_media(url: str) -> bytes:
+        """Download media from url, following redirects."""
+        try:
+            with Client(follow_redirects=True, timeout=30) as client:
+                response = client.get(url)
+                response.raise_for_status()
+                return response.content
+        except HTTPError as error:
+            raise ValueError(f"Cannot download media from {url}: {error}") from error
 
     def _sanitize_media_filename(self, filename: str) -> str:
         """Normalize a media filename the same way Anki-Connect does.

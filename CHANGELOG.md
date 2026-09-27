@@ -4,6 +4,20 @@ All notable changes to this project are documented in this file. The format is
 based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this
 project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2026-09-27
+
+### Added
+- `storeMediaFile` accepts `url` (server-side download, httpx with redirects
+  and a 30s timeout) and `path` (server-side file) in addition to base64
+  `data`; precedence `data` > `url` > `path`, mirroring upstream Anki-Connect.
+  Missing source, unreachable URL, or unreadable path raise client-facing
+  errors. The MCP `store_media_file` tool exposes the same options.
+
+### Fixed
+- Return the bare result with no `{result, error}` envelope for requests at
+  version ≤4 (missing `version` now defaults to 4), matching the AnkiConnect
+  spec used by legacy clients such as Yomitan.
+
 ## [0.3.1] - 2026-09-27
 
 ### Fixed

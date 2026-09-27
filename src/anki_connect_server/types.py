@@ -171,8 +171,12 @@ class GetIntervalsParams(_BaseParams):
 
 
 class StoreMediaFileParams(_BaseParams):
+    """Upstream Anki-Connect accepts exactly one of data/url/path."""
+
     filename: str = ""
     data: str = ""
+    url: str = ""
+    path: str = ""
 
 
 class FilenameParams(_BaseParams):

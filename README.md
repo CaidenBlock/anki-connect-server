@@ -155,6 +155,38 @@ curl -X POST http://localhost:8765/api \
   }'
 ```
 
+#### Store Media from a URL (no base64 needed)
+
+`storeMediaFile` accepts base64 `data`, a `url` to download, or a server-side `path`.
+When several are given, `data` takes precedence over `url`, which takes precedence over `path`.
+
+```bash
+# Download audio from a dictionary on the server side (~100-byte request)
+curl -X POST http://localhost:8765/api \
+  -H "Content-Type: application/json" \
+  -d '{
+    "action": "storeMediaFile",
+    "version": 6,
+    "params": {
+      "filename": "sky_us.ogg",
+      "url": "https://commons.wikimedia.org/wiki/Special:FilePath/En-us-sky.ogg"
+    }
+  }'
+```
+
+```bash
+# Copy a file already visible to the server (e.g. a mounted volume)
+curl -X POST http://localhost:8765/api \
+  -H "Content-Type: application/json" \
+  -d '{
+    "action": "storeMediaFile",
+    "version": 6,
+    "params": {"filename": "sky.mp3", "path": "/data/media-in/sky.mp3"}
+  }'
+```
+
+Then reference the stored file in a note field with `[sound:sky_us.ogg]`.
+
 #### Sync with AnkiWeb
 
 ```bash
@@ -239,7 +271,7 @@ curl -X POST http://localhost:8765/api \
 
 #### Media
 - `getMediaDirPath` - Get media directory path
-- `storeMediaFile` - Store a media file (base64)
+- `storeMediaFile` - Store a media file (base64 `data`, `url`, or server-side `path`)
 - `retrieveMediaFile` - Retrieve a media file
 - `deleteMediaFile` - Delete a media file
 
@@ -319,7 +351,7 @@ This is a **SQLite lock contention** error, not a media-sync issue — despite w
 - `get_all_tags` - Get all tags
 - `add_tags` / `remove_tags` - Manage tags
 - `get_media_dir_path` - Get media directory
-- `store_media_file` / `retrieve_media_file` / `delete_media_file` - Media operations
+- `store_media_file` / `retrieve_media_file` / `delete_media_file` - Media operations (`store_media_file` accepts base64 `data`, `url`, or server-side `path`)
 - `change_deck` - Move cards between decks
 - `cards_to_notes` - Convert card IDs to note IDs
 - `get_deck_config` - Get deck configuration

@@ -271,7 +271,7 @@ async def handle_get_media_dir_path(wrapper: AnkiWrapper, params: EmptyParams) -
 
 
 async def handle_store_media_file(wrapper: AnkiWrapper, params: StoreMediaFileParams) -> None:
-    await _run(wrapper.store_media_file, params.filename, params.data)
+    await _run(wrapper.store_media_file, params.filename, params.data, params.url, params.path)
 
 
 async def handle_retrieve_media_file(wrapper: AnkiWrapper, params: FilenameParams) -> str | None:

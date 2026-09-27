@@ -1,5 +1,6 @@
 """Tests for API handlers using real AnkiWrapper."""
 
+import base64
 import time
 
 import pytest
@@ -466,6 +467,90 @@ class TestMediaHandlers:
             anki_wrapper, FilenameParams(filename="nonexistent.txt")
         )
         assert result is None
+
+    @pytest.mark.asyncio
+    async def test_handle_store_media_file_via_data(self, anki_wrapper):
+        """storeMediaFile with base64 data writes the decoded bytes."""
+        from anki_connect_server.handlers import dispatch
+
+        payload = base64.b64encode(b"audio-bytes").decode()
+        await dispatch("storeMediaFile", {"filename": "t.mp3", "data": payload}, anki_wrapper)
+        assert anki_wrapper.retrieve_media_file("t.mp3") == payload
+
+    @pytest.mark.asyncio
+    async def test_handle_store_media_file_via_path(self, anki_wrapper, tmp_path):
+        """storeMediaFile with a server-side path copies the file contents."""
+        from anki_connect_server.handlers import dispatch
+
+        source = tmp_path / "source.mp3"
+        source.write_bytes(b"local-file-bytes")
+        await dispatch("storeMediaFile", {"filename": "t.mp3", "path": str(source)}, anki_wrapper)
+        assert (
+            anki_wrapper.retrieve_media_file("t.mp3")
+            == base64.b64encode(b"local-file-bytes").decode()
+        )
+
+    @pytest.mark.asyncio
+    async def test_handle_store_media_file_via_url(self, anki_wrapper, httpserver):
+        """storeMediaFile with a URL downloads and stores the payload."""
+        from anki_connect_server.handlers import dispatch
+
+        httpserver.expect_request("/sky.mp3").respond_with_data(b"downloaded-bytes")
+        download_url = httpserver.url_for("/sky.mp3")
+        await dispatch("storeMediaFile", {"filename": "t.mp3", "url": download_url}, anki_wrapper)
+        assert (
+            anki_wrapper.retrieve_media_file("t.mp3")
+            == base64.b64encode(b"downloaded-bytes").decode()
+        )
+
+    @pytest.mark.asyncio
+    async def test_handle_store_media_file_bad_url_raises(self, anki_wrapper):
+        """storeMediaFile with an unreachable URL raises a client-facing error."""
+        from anki_connect_server.handlers import dispatch
+
+        with pytest.raises(ValueError, match="Cannot download media"):
+            await dispatch(
+                "storeMediaFile",
+                {"filename": "t.mp3", "url": "http://127.0.0.1:1/nope.mp3"},
+                anki_wrapper,
+            )
+
+    @pytest.mark.asyncio
+    async def test_handle_store_media_file_missing_path_raises(self, anki_wrapper, tmp_path):
+        """storeMediaFile with a nonexistent path raises a client-facing error."""
+        from anki_connect_server.handlers import dispatch
+
+        missing = tmp_path / "missing.mp3"
+        with pytest.raises(ValueError, match="Cannot read media file"):
+            await dispatch(
+                "storeMediaFile", {"filename": "t.mp3", "path": str(missing)}, anki_wrapper
+            )
+
+    @pytest.mark.asyncio
+    async def test_handle_store_media_file_requires_source(self, anki_wrapper):
+        """storeMediaFile with no data/url/path raises a client-facing error."""
+        from anki_connect_server.handlers import dispatch
+
+        with pytest.raises(ValueError, match="One of data, url or path is required"):
+            await dispatch("storeMediaFile", {"filename": "t.mp3"}, anki_wrapper)
+
+    @pytest.mark.asyncio
+    async def test_handle_store_media_file_data_takes_precedence(self, anki_wrapper, tmp_path):
+        """When several sources are given, data wins (mirrors upstream)."""
+        from anki_connect_server.handlers import dispatch
+
+        source = tmp_path / "source.mp3"
+        source.write_bytes(b"path-bytes")
+        await dispatch(
+            "storeMediaFile",
+            {
+                "filename": "t.mp3",
+                "data": base64.b64encode(b"data-bytes").decode(),
+                "path": str(source),
+            },
+            anki_wrapper,
+        )
+        assert anki_wrapper.retrieve_media_file("t.mp3") == base64.b64encode(b"data-bytes").decode()
 
 
 class TestSyncHandlers:

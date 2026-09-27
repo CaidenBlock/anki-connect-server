@@ -200,7 +200,7 @@ def update_note_fields(note_id: int, fields: dict[str, str]) -> bool:
     """Update fields of an existing note (get the note ID via find_notes /
     get_notes_info). Only the given fields are changed; text and HTML are
     stored verbatim. Edits affect all sibling cards of the note."""
-    get_anki_wrapper().update_note_fields({"id": note_id, "fields": fields})
+    get_anki_wrapper().update_note_fields(cast(JsonObject, {"id": note_id, "fields": fields}))
     return True
 
 
@@ -292,16 +292,14 @@ def get_model_styling(model_name: str) -> JsonObject:
 
 
 @mcp.tool(annotations=IDEMPOTENT_WRITE)
-def update_model_templates(
-    model_name: str, templates: dict[str, dict[str, str]]
-) -> bool:
+def update_model_templates(model_name: str, templates: dict[str, dict[str, str]]) -> bool:
     """Update card templates of an existing model.
 
     templates maps a template name (as returned by get_model_templates) to a
     dict with optional "Front" and "Back" HTML; only supplied sides change.
     """
     get_anki_wrapper().update_model_templates(
-        {"name": model_name, "templates": templates}
+        cast(JsonObject, {"name": model_name, "templates": templates})
     )
     return True
 
@@ -320,9 +318,9 @@ def get_api_version() -> int:
 
 
 @mcp.tool(annotations=IDEMPOTENT_WRITE)
-def store_media_file(filename: str, data: str) -> bool:
-    """Store a media file."""
-    get_anki_wrapper().store_media_file(filename, data)
+def store_media_file(filename: str, data: str = "", url: str = "", path: str = "") -> bool:
+    """Store a media file from base64 data, a URL, or a server-side path."""
+    get_anki_wrapper().store_media_file(filename, data, url, path)
     return True
 
 
