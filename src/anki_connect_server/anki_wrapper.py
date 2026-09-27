@@ -393,6 +393,48 @@ class AnkiWrapper:
         fields = re.findall(r"\{\{([^}]+)\}\}", template)
         return [f for f in fields if not f.startswith("!")]
 
+    def _require_model(self, model_name: str) -> NotetypeDict:
+        """Get model dict by name, raising ValueError if it doesn't exist."""
+        model = self._get_model_by_name(model_name)
+        if not model:
+            raise ValueError(f"Model not found: {model_name}")
+        return model
+
+    def _require_field(self, model: NotetypeDict, field_name: str) -> FieldDict:
+        field_map = self.col.models.field_map(model)
+        if field_name not in field_map:
+            raise ValueError(f"Field not found: {field_name}")
+        return field_map[field_name][1]
+
+    def model_add_field(self, model_name: str, field_name: str, index: int | None = None) -> None:
+        model = self._require_model(model_name)
+        if not field_name or field_name in self.col.models.field_map(model):
+            raise ValueError(f"Field already exists or is empty: {field_name!r}")
+        field = self.col.models.new_field(field_name)
+        self.col.models.add_field(model, field)
+        if index is not None:
+            field_dict = self._require_field(model, field_name)
+            self.col.models.reposition_field(model, field_dict, index)
+        self.col.models.update(model)
+
+    def model_remove_field(self, model_name: str, field_name: str) -> None:
+        model = self._require_model(model_name)
+        field = self._require_field(model, field_name)
+        self.col.models.remove_field(model, field)
+        self.col.models.update(model)
+
+    def model_rename_field(self, model_name: str, old_name: str, new_name: str) -> None:
+        model = self._require_model(model_name)
+        field = self._require_field(model, old_name)
+        self.col.models.rename_field(model, field, new_name)
+        self.col.models.update(model)
+
+    def model_reposition_field(self, model_name: str, field_name: str, index: int) -> None:
+        model = self._require_model(model_name)
+        field = self._require_field(model, field_name)
+        self.col.models.reposition_field(model, field, index)
+        self.col.models.update(model)
+
     def create_model(
         self,
         model_name: str,

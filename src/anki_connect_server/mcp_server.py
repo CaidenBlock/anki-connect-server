@@ -97,6 +97,59 @@ def get_model_field_names(model_name: str) -> list[str]:
 
 
 @mcp.tool(annotations=ADDITIVE_WRITE)
+def create_model(
+    model_name: str,
+    fields: list[str],
+    templates: dict[str, dict[str, str]],
+    css: str = "",
+    is_cloze: bool = False,
+) -> bool:
+    """Create a new note model (note type).
+
+    fields is the ordered list of field names. templates maps template names
+    to {"Front": ..., "Back": ...} HTML with {{field}} placeholders (one
+    template per generated card; add multiple for multiple cards per note).
+    Set is_cloze=True for cloze models (requires a {{cloze:...}} template).
+    """
+    get_anki_wrapper().create_model(
+        model_name,
+        fields,
+        [{"Name": name, **tmpl} for name, tmpl in templates.items()],
+        css,
+        is_cloze,
+    )
+    return True
+
+
+@mcp.tool(annotations=IDEMPOTENT_WRITE)
+def model_add_field(model_name: str, field_name: str, index: int | None = None) -> bool:
+    """Add a field to a model, optionally at a zero-based position."""
+    get_anki_wrapper().model_add_field(model_name, field_name, index)
+    return True
+
+
+@mcp.tool(annotations=DESTRUCTIVE_IDEMPOTENT_WRITE)
+def model_remove_field(model_name: str, field_name: str) -> bool:
+    """Remove a field from a model. Data in the field is lost from all notes."""
+    get_anki_wrapper().model_remove_field(model_name, field_name)
+    return True
+
+
+@mcp.tool(annotations=IDEMPOTENT_WRITE)
+def model_rename_field(model_name: str, old_field_name: str, new_field_name: str) -> bool:
+    """Rename a field, preserving its content in all notes."""
+    get_anki_wrapper().model_rename_field(model_name, old_field_name, new_field_name)
+    return True
+
+
+@mcp.tool(annotations=IDEMPOTENT_WRITE)
+def model_reposition_field(model_name: str, field_name: str, index: int) -> bool:
+    """Move a field to a zero-based position in the model's field order."""
+    get_anki_wrapper().model_reposition_field(model_name, field_name, index)
+    return True
+
+
+@mcp.tool(annotations=ADDITIVE_WRITE)
 def add_note(
     deck_name: str, model_name: str, fields: dict[str, str], tags: list[str] | None = None
 ) -> int | None:
@@ -140,6 +193,15 @@ def find_cards(query: str) -> list[int]:
 def get_cards_info(cards: list[int]) -> list[JsonObject]:
     """Get detailed information about specific cards."""
     return get_anki_wrapper().cards_info(cards)
+
+
+@mcp.tool(annotations=DESTRUCTIVE_IDEMPOTENT_WRITE)
+def update_note_fields(note_id: int, fields: dict[str, str]) -> bool:
+    """Update fields of an existing note (get the note ID via find_notes /
+    get_notes_info). Only the given fields are changed; text and HTML are
+    stored verbatim. Edits affect all sibling cards of the note."""
+    get_anki_wrapper().update_note_fields({"id": note_id, "fields": fields})
+    return True
 
 
 @mcp.tool(annotations=DESTRUCTIVE_IDEMPOTENT_WRITE)
@@ -227,6 +289,28 @@ def get_model_templates(model_name: str) -> dict[str, dict[str, str]]:
 def get_model_styling(model_name: str) -> JsonObject:
     """Get CSS styling for a model."""
     return get_anki_wrapper().model_styling(model_name)
+
+
+@mcp.tool(annotations=IDEMPOTENT_WRITE)
+def update_model_templates(
+    model_name: str, templates: dict[str, dict[str, str]]
+) -> bool:
+    """Update card templates of an existing model.
+
+    templates maps a template name (as returned by get_model_templates) to a
+    dict with optional "Front" and "Back" HTML; only supplied sides change.
+    """
+    get_anki_wrapper().update_model_templates(
+        {"name": model_name, "templates": templates}
+    )
+    return True
+
+
+@mcp.tool(annotations=IDEMPOTENT_WRITE)
+def update_model_styling(model_name: str, css: str) -> bool:
+    """Replace the CSS styling of a model."""
+    get_anki_wrapper().update_model_styling({"name": model_name, "css": css})
+    return True
 
 
 @mcp.tool(annotations=READ_ONLY)

@@ -242,6 +242,109 @@ class TestMCPWrapper:
         result = get_model_styling("Basic")
         assert "css" in result
 
+    def test_create_model(self):
+        """Test create_model MCP tool."""
+        from anki_connect_server.mcp_server import (
+            create_model,
+            get_model_field_names,
+            get_model_templates,
+        )
+
+        result = create_model(
+            "MCPTestModel",
+            ["Front", "Back", "Extra"],
+            {"Card 1": {"Front": "{{Front}}", "Back": "{{Back}}"}},
+            css=".card { color: blue; }",
+        )
+        assert result is True
+        assert get_model_field_names("MCPTestModel") == ["Front", "Back", "Extra"]
+        templates = get_model_templates("MCPTestModel")
+        assert templates["Card 1"]["Front"] == "{{Front}}"
+
+    def test_create_model_cloze(self):
+        """Test create_model MCP tool with a cloze model."""
+        from anki_connect_server.mcp_server import create_model
+
+        result = create_model(
+            "MCPClozeModel",
+            ["Text"],
+            {"Cloze": {"Front": "{{cloze:Text}}", "Back": "{{cloze:Text}}"}},
+            is_cloze=True,
+        )
+        assert result is True
+
+    def test_model_field_management(self):
+        """Test model_add_field / model_rename_field / model_reposition_field /
+        model_remove_field MCP tools."""
+        from anki_connect_server.mcp_server import (
+            get_model_field_names,
+            model_add_field,
+            model_remove_field,
+            model_rename_field,
+            model_reposition_field,
+        )
+
+        assert model_add_field("Basic", "MCPExtra") is True
+        names = get_model_field_names("Basic")
+        assert names[-1] == "MCPExtra"
+
+        assert model_reposition_field("Basic", "MCPExtra", 0) is True
+        assert get_model_field_names("Basic")[0] == "MCPExtra"
+
+        assert model_rename_field("Basic", "MCPExtra", "MCPRenamed") is True
+        names = get_model_field_names("Basic")
+        assert "MCPRenamed" in names and "MCPExtra" not in names
+
+        assert model_remove_field("Basic", "MCPRenamed") is True
+        assert "MCPRenamed" not in get_model_field_names("Basic")
+
+    def test_model_field_errors(self):
+        """Field operations raise for unknown model/field or duplicate field."""
+        import pytest
+
+        from anki_connect_server.mcp_server import (
+            model_add_field,
+            model_remove_field,
+        )
+
+        with pytest.raises(ValueError, match="Model not found"):
+            model_add_field("NoSuchModelMCP", "F")
+        with pytest.raises(ValueError, match="Field already exists"):
+            model_add_field("Basic", "Front")
+        with pytest.raises(ValueError, match="Field not found"):
+            model_remove_field("Basic", "NoSuchFieldMCP")
+
+    def test_update_note_fields(self):
+        """Test update_note_fields MCP tool."""
+        from anki_connect_server.mcp_server import (
+            add_note,
+            get_notes_info,
+            update_note_fields,
+        )
+
+        note_id = add_note("Default", "Basic", {"Front": "Old", "Back": "B"})
+        assert note_id is not None
+        assert update_note_fields(note_id, {"Front": "New"}) is True
+        info = get_notes_info([note_id])[0]
+        assert info["fields"]["Front"]["value"] == "New"
+        assert info["fields"]["Back"]["value"] == "B"
+
+    def test_update_model_templates_and_styling(self):
+        """Test update_model_templates / update_model_styling MCP tools."""
+        from anki_connect_server.mcp_server import (
+            get_model_styling,
+            get_model_templates,
+            update_model_styling,
+            update_model_templates,
+        )
+
+        assert update_model_templates("Basic", {"Card 1": {"Front": "Q: {{Front}}"}}) is True
+        assert get_model_templates("Basic")["Card 1"]["Front"] == "Q: {{Front}}"
+
+        css = ".card { font-family: mono; }"
+        assert update_model_styling("Basic", css) is True
+        assert get_model_styling("Basic")["css"] == css
+
     def test_get_api_version(self):
         """Test get_api_version MCP tool."""
         from anki_connect_server.mcp_server import get_api_version

@@ -304,6 +304,9 @@ This is a **SQLite lock contention** error, not a media-sync issue — despite w
 - `delete_decks` - Delete decks
 - `get_model_names` - Get all model names
 - `get_model_field_names` - Get fields for a model
+- `create_model` - Create a note model (fields + card templates)
+- `model_add_field` / `model_remove_field` / `model_rename_field` / `model_reposition_field` - Manage model fields
+- `update_note_fields` - Update fields of an existing note
 - `add_note` - Add a new note
 - `find_notes` - Search for notes
 - `get_notes_info` - Get note details
@@ -321,6 +324,7 @@ This is a **SQLite lock contention** error, not a media-sync issue — despite w
 - `cards_to_notes` - Convert card IDs to note IDs
 - `get_deck_config` - Get deck configuration
 - `get_model_templates` / `get_model_styling` - Model customization
+- `update_model_templates` / `update_model_styling` - Edit model templates/CSS
 - `get_api_version` - Get API version
 - `import_package` / `export_package` - Import/export decks
 - `sync` / `sync_media` / `get_sync_status` - Sync operations
