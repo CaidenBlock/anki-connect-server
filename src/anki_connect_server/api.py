@@ -14,6 +14,10 @@ from anki_connect_server.types import JsonValue
 
 logger = logging.getLogger(__name__)
 
+# Requests at this version or below receive the bare result with no envelope
+# (see https://foosoft.net/projects/anki-connect/).
+LEGACY_VERSION = 4
+
 
 def create_anki_wrapper(config: Config | None = None) -> AnkiWrapper:
     settings = config or get_config()
@@ -43,7 +47,8 @@ app = FastAPI(
 
 class AnkiConnectRequest(BaseModel):
     action: str
-    version: int = 6
+    # The spec defaults a missing version to 4 (legacy, envelope-free replies).
+    version: int = 4
     params: dict[str, JsonValue] = {}
 
 
@@ -64,20 +69,28 @@ async def health() -> dict[str, str]:
     return {"status": "healthy"}
 
 
-@app.post("/", response_model=AnkiConnectResponse)
-@app.post("/api", response_model=AnkiConnectResponse)
-async def handle_request(req: AnkiConnectRequest, request: Request) -> dict[str, JsonValue]:
+# No response_model: legacy (version ≤4) requests return the bare result,
+# which does not fit the v6 envelope shape.
+@app.post("/")
+@app.post("/api")
+async def handle_request(req: AnkiConnectRequest, request: Request) -> JsonValue:
     wrapper = get_request_wrapper(request)
     try:
         result = await dispatch(req.action, req.params, wrapper)
-        return {"result": result, "error": None}
     except ValueError as e:
         # Client-facing errors (unknown action, missing/invalid params) are
         # reported in the response body per the AnkiConnect convention with
-        # HTTP 200 so existing clients keep working.
+        # HTTP 200 so existing clients keep working. The error envelope is
+        # sent regardless of the requested version, matching upstream.
         return {"result": None, "error": str(e)}
     # Any other exception (corrupted collection, Anki backend crash, etc.) is
     # a server error and propagates as HTTP 500 via the handler below.
+    if req.version <= LEGACY_VERSION:
+        # Per the AnkiConnect spec, version ≤4 responses contain only the value
+        # of result, with no error field (clients designed for old versions,
+        # e.g. Yomitan at version 2, rely on this).
+        return result
+    return {"result": result, "error": None}
 
 
 @app.exception_handler(Exception)

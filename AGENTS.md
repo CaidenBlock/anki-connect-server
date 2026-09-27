@@ -4,3 +4,4 @@
 - Don't delete files unless explicitly asked
 - Don't commit generated files
 - Run quality tests before each commit (ruff, pyright, pytest)
+- Never commit or push without explicit permission from the user

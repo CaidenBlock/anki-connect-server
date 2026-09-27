@@ -308,6 +308,52 @@ async def test_multi_action(app_with_wrapper):
 
 
 @pytest.mark.asyncio
+async def test_legacy_version_bare_result(app_with_wrapper):
+    """Version ≤4 requests receive the bare result with no envelope, per the
+    AnkiConnect spec (Yomitan probes at version 2 and relies on this)."""
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        for version in (2, 4):
+            response = await client.post("/", json={"action": "deckNames", "version": version})
+            assert response.status_code == 200
+            assert "Default" in response.json()
+
+        response = await client.post("/", json={"action": "version", "version": 2})
+        assert response.json() == 6
+
+
+@pytest.mark.asyncio
+async def test_missing_version_defaults_to_legacy_envelope_free_response(app_with_wrapper):
+    """A missing version field defaults to 4, so the bare result is returned."""
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.post("/", json={"action": "deckNames"})
+        assert response.status_code == 200
+        assert "Default" in response.json()
+
+
+@pytest.mark.asyncio
+async def test_legacy_version_error_envelope(app_with_wrapper):
+    """Version ≤4 failures still return the {result, error} envelope, matching
+    upstream format_exception_reply."""
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.post("/", json={"action": "unknownAction", "version": 2})
+        assert response.status_code == 200
+        data = response.json()
+        assert data["result"] is None
+        assert "Unsupported action" in data["error"]
+
+
+@pytest.mark.asyncio
+async def test_version_6_envelope(app_with_wrapper):
+    """Version >4 requests keep the standard {result, error} envelope."""
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.post("/", json={"action": "deckNames", "version": 6})
+        assert response.status_code == 200
+        data = response.json()
+        assert "Default" in data["result"]
+        assert data["error"] is None
+
+
+@pytest.mark.asyncio
 async def test_unknown_action(app_with_wrapper):
     """Test unknown action returns error."""
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
