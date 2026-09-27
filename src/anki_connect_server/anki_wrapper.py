@@ -551,10 +551,10 @@ class AnkiWrapper:
         self.col.update_note(note_obj)
 
     def add_tags(self, notes: list[int], tags: str) -> None:
-        self.col.tags.add_tags((NoteId(n) for n in notes), tags.split())  # type: ignore[union-attr]
+        self.col.tags.bulk_add([NoteId(n) for n in notes], tags)
 
     def remove_tags(self, notes: list[int], tags: str) -> None:
-        self.col.tags.remove_tags((NoteId(n) for n in notes), tags.split())  # type: ignore[union-attr]
+        self.col.tags.bulk_remove([NoteId(n) for n in notes], tags)
 
     def get_tags(self) -> list[str]:
         return list(self.col.tags.all())

@@ -10,6 +10,7 @@ from anki_connect_server.handlers import (
     API_VERSION,
     handle_add_note,
     handle_add_notes,
+    handle_add_tags,
     handle_are_due,
     handle_are_suspended,
     handle_can_add_notes,
@@ -33,6 +34,7 @@ from anki_connect_server.handlers import (
     handle_model_styling,
     handle_multi,
     handle_notes_info,
+    handle_remove_tags,
     handle_retrieve_media_file,
     handle_suspend,
     handle_sync_status,
@@ -43,6 +45,7 @@ from anki_connect_server.handlers import (
 from anki_connect_server.types import (
     AddNoteParams,
     AddNotesParams,
+    AddTagsParams,
     CardsIdsParams,
     ChangeDeckParams,
     CreateDeckParams,
@@ -257,6 +260,42 @@ class TestNoteHandlers:
         """Test deleteNotes handler."""
         note_id = anki_wrapper.add_note(_note())
         await handle_delete_notes(anki_wrapper, NotesIdsParams(notes=[note_id]))
+
+    @pytest.mark.asyncio
+    async def test_handle_add_tags(self, anki_wrapper):
+        """Test addTags handler: tags land on the note."""
+        note_id = anki_wrapper.add_note(_note())
+        await handle_add_tags(anki_wrapper, AddTagsParams(notes=[note_id], tags="foo bar"))
+        note = anki_wrapper.col.get_note(note_id)
+        assert sorted(note.tags) == ["bar", "foo"]
+
+    @pytest.mark.asyncio
+    async def test_handle_remove_tags(self, anki_wrapper):
+        """Test removeTags handler: tags are removed from the note."""
+        note_id = anki_wrapper.add_note(_note())
+        await handle_add_tags(anki_wrapper, AddTagsParams(notes=[note_id], tags="foo bar"))
+        await handle_remove_tags(anki_wrapper, AddTagsParams(notes=[note_id], tags="bar"))
+        note = anki_wrapper.col.get_note(note_id)
+        assert note.tags == ["foo"]
+
+    @pytest.mark.asyncio
+    async def test_handle_remove_tags_all(self, anki_wrapper):
+        """Removing every tag leaves the note untagged."""
+        note_id = anki_wrapper.add_note(_note())
+        await handle_add_tags(anki_wrapper, AddTagsParams(notes=[note_id], tags="foo bar"))
+        await handle_remove_tags(anki_wrapper, AddTagsParams(notes=[note_id], tags="foo bar"))
+        assert anki_wrapper.col.get_note(note_id).tags == []
+
+    @pytest.mark.asyncio
+    async def test_handle_add_tags_accepts_multiple_notes(self, anki_wrapper):
+        """addTags applies to every note in the batch."""
+        note_ids = [
+            anki_wrapper.add_note(_note(front="Note1")),
+            anki_wrapper.add_note(_note(front="Note2")),
+        ]
+        await handle_add_tags(anki_wrapper, AddTagsParams(notes=note_ids, tags="batch"))
+        for note_id in note_ids:
+            assert anki_wrapper.col.get_note(note_id).tags == ["batch"]
 
 
 class TestCardHandlers:

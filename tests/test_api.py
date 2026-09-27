@@ -241,6 +241,41 @@ async def test_get_tags_action(app_with_wrapper):
 
 
 @pytest.mark.asyncio
+async def test_add_and_remove_tags_action(app_with_wrapper):
+    """Test addTags and removeTags actions end-to-end."""
+    anki_wrapper = app_with_wrapper
+    note_id = anki_wrapper.add_note(
+        {"deckName": "Default", "modelName": "Basic", "fields": {"Front": "Test", "Back": "Test"}}
+    )
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.post(
+            "/",
+            json={
+                "action": "addTags",
+                "version": 6,
+                "params": {"notes": [note_id], "tags": "foo bar"},
+            },
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["error"] is None
+        assert sorted(anki_wrapper.col.get_note(note_id).tags) == ["bar", "foo"]
+
+        response = await client.post(
+            "/",
+            json={
+                "action": "removeTags",
+                "version": 6,
+                "params": {"notes": [note_id], "tags": "bar"},
+            },
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["error"] is None
+        assert anki_wrapper.col.get_note(note_id).tags == ["foo"]
+
+
+@pytest.mark.asyncio
 async def test_get_media_dir_path_action(app_with_wrapper):
     """Test getMediaDirPath action."""
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
