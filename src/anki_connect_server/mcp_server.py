@@ -205,6 +205,21 @@ def update_note_fields(note_id: int, fields: dict[str, str]) -> bool:
 
 
 @mcp.tool(annotations=DESTRUCTIVE_IDEMPOTENT_WRITE)
+def update_note(
+    note_id: int, fields: dict[str, str] | None = None, tags: list[str] | None = None
+) -> bool:
+    """Update the fields and/or tags of an existing note.
+
+    fields are patched onto the note; tags replace the existing set. Pass
+    at least one of the two. Get the note ID via find_notes / get_notes_info.
+    """
+    get_anki_wrapper().update_note(
+        cast(JsonObject, {"id": note_id, "fields": fields or {}, "tags": tags or []})
+    )
+    return True
+
+
+@mcp.tool(annotations=DESTRUCTIVE_IDEMPOTENT_WRITE)
 def suspend_cards(cards: list[int]) -> bool:
     """Suspend one or more cards."""
     return get_anki_wrapper().suspend(cards)

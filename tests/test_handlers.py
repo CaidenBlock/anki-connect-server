@@ -226,6 +226,72 @@ class TestNoteHandlers:
         )
 
     @pytest.mark.asyncio
+    async def test_handle_update_note_fields_and_tags(self, anki_wrapper):
+        """updateNote patches fields and replaces tags in one call."""
+        from anki_connect_server.handlers import dispatch
+
+        note_id = anki_wrapper.add_note(_note())
+        assert note_id is not None
+        await dispatch(
+            "updateNote",
+            {"note": {"id": note_id, "fields": {"Front": "New"}, "tags": ["european"]}},
+            anki_wrapper,
+        )
+        note = anki_wrapper.col.get_note(note_id)
+        assert note["Front"] == "New"
+        assert note.tags == ["european"]
+
+    @pytest.mark.asyncio
+    async def test_handle_update_note_tags_only(self, anki_wrapper):
+        """updateNote with only tags leaves fields untouched."""
+        from anki_connect_server.handlers import dispatch
+
+        note_id = anki_wrapper.add_note(_note(front="Original"))
+        assert note_id is not None
+        anki_wrapper.add_tags([note_id], "old")
+        await dispatch("updateNote", {"note": {"id": note_id, "tags": ["fresh"]}}, anki_wrapper)
+        note = anki_wrapper.col.get_note(note_id)
+        assert note["Front"] == "Original"
+        assert note.tags == ["fresh"]
+
+    @pytest.mark.asyncio
+    async def test_handle_update_note_fields_only(self, anki_wrapper):
+        """updateNote with only fields leaves existing tags untouched."""
+        from anki_connect_server.handlers import dispatch
+
+        note_id = anki_wrapper.add_note(_note())
+        assert note_id is not None
+        anki_wrapper.add_tags([note_id], "kept")
+        await dispatch(
+            "updateNote", {"note": {"id": note_id, "fields": {"Back": "Changed"}}}, anki_wrapper
+        )
+        note = anki_wrapper.col.get_note(note_id)
+        assert note["Back"] == "Changed"
+        assert note.tags == ["kept"]
+
+    @pytest.mark.asyncio
+    async def test_handle_update_note_requires_source(self, anki_wrapper):
+        """updateNote without fields or tags raises a client-facing error."""
+        from anki_connect_server.handlers import dispatch
+
+        note_id = anki_wrapper.add_note(_note())
+        assert note_id is not None
+        with pytest.raises(ValueError, match="requires 'fields' and/or 'tags'"):
+            await dispatch("updateNote", {"note": {"id": note_id}}, anki_wrapper)
+
+    @pytest.mark.asyncio
+    async def test_handle_update_note_missing_note_raises(self, anki_wrapper):
+        """updateNote for a nonexistent note id raises a client-facing error."""
+        from anki_connect_server.handlers import dispatch
+
+        with pytest.raises(ValueError, match="not found"):
+            await dispatch(
+                "updateNote",
+                {"note": {"id": 999999999, "fields": {"Front": "x"}}},
+                anki_wrapper,
+            )
+
+    @pytest.mark.asyncio
     async def test_handle_can_add_notes(self, anki_wrapper):
         """Test canAddNotes handler."""
         result = await handle_can_add_notes(anki_wrapper, AddNotesParams(notes=[_note()]))

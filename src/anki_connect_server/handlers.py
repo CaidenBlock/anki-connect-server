@@ -38,6 +38,7 @@ from anki_connect_server.types import (
     SetDeckConfigIdParams,
     StoreMediaFileParams,
     UpdateNoteFieldsParams,
+    UpdateNoteParams,
 )
 
 logger = logging.getLogger(__name__)
@@ -208,6 +209,10 @@ async def handle_update_note_fields(wrapper: AnkiWrapper, params: UpdateNoteFiel
     await _run(wrapper.update_note_fields, params.note.model_dump())
 
 
+async def handle_update_note(wrapper: AnkiWrapper, params: UpdateNoteParams) -> None:
+    await _run(wrapper.update_note, params.note.model_dump())
+
+
 async def handle_add_tags(wrapper: AnkiWrapper, params: AddTagsParams) -> None:
     await _run(wrapper.add_tags, params.notes, params.tags)
 
@@ -354,6 +359,7 @@ ACTION_HANDLERS: dict[str, tuple[type[BaseModel], Handler[Any]]] = {
     "addNotes": (AddNotesParams, handle_add_notes),
     "canAddNotes": (AddNotesParams, handle_can_add_notes),
     "updateNoteFields": (UpdateNoteFieldsParams, handle_update_note_fields),
+    "updateNote": (UpdateNoteParams, handle_update_note),
     "addTags": (AddTagsParams, handle_add_tags),
     "removeTags": (AddTagsParams, handle_remove_tags),
     "getTags": (EmptyParams, handle_get_tags),

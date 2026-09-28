@@ -4,6 +4,13 @@ All notable changes to this project are documented in this file. The format is
 based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this
 project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- `updateNote` action and `update_note` MCP tool: update the fields and/or
+  tags of an existing note in one call (fields are patched, tags replace the
+  existing set; at least one of the two is required, mirroring upstream).
+
 ## [0.4.0] - 2026-09-27
 
 ### Added

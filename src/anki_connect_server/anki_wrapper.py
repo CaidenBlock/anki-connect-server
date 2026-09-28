@@ -551,6 +551,36 @@ class AnkiWrapper:
                 note_obj[field_name] = str(value) if value is not None else ""
         self.col.update_note(note_obj)
 
+    def update_note_tags(self, note_id: int, tags: list[str]) -> None:
+        """Set a note's tags, replacing any existing ones."""
+        try:
+            note_obj = self.col.get_note(NoteId(note_id))
+        except Exception as e:
+            raise ValueError(f"Note {note_id} not found: {e}") from e
+        note_obj.tags = [str(t) for t in tags]
+        self.col.update_note(note_obj)
+
+    def update_note(self, note: JsonObject) -> None:
+        """Update the fields and/or tags of an existing note.
+
+        Mirrors upstream Anki-Connect updateNote: fields are applied first
+        and are not rolled back if the tag update fails; a note with
+        neither fields nor tags fails.
+        """
+        note_id = note.get("id")
+        if not isinstance(note_id, int):
+            raise ValueError("updateNote requires an 'id' field")
+        fields = note.get("fields")
+        tags = note.get("tags")
+        field_map = fields if isinstance(fields, dict) else {}
+        tag_list = [str(t) for t in tags] if isinstance(tags, list) else []
+        if not field_map and not tag_list:
+            raise ValueError("updateNote requires 'fields' and/or 'tags'")
+        if field_map:
+            self.update_note_fields(note)
+        if tag_list:
+            self.update_note_tags(note_id, tag_list)
+
     def add_tags(self, notes: list[int], tags: str) -> None:
         self.col.tags.bulk_add([NoteId(n) for n in notes], tags)
 

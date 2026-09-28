@@ -140,6 +140,19 @@ class UpdateNoteFieldsParams(_BaseParams):
     note: NoteFieldUpdate
 
 
+class NoteUpdate(_BaseParams):
+    """The note object of updateNote: id plus optional fields and/or tags."""
+
+    model_config = ConfigDict(extra="forbid")
+    id: int
+    fields: dict[str, str] = Field(default_factory=dict)
+    tags: list[str] = Field(default_factory=list)
+
+
+class UpdateNoteParams(_BaseParams):
+    note: NoteUpdate
+
+
 class NotesIdsParams(_BaseParams):
     """Shared by actions keyed on a list of note ids."""
 

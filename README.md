@@ -252,6 +252,7 @@ curl -X POST http://localhost:8765/api \
 - `addNotes` - Add multiple notes
 - `canAddNotes` - Check if notes can be added
 - `updateNoteFields` - Update note fields
+- `updateNote` - Update note fields and/or tags in one call
 - `findNotes` - Search for notes
 - `notesInfo` - Get note details
 - `deleteNotes` - Delete notes
@@ -352,6 +353,7 @@ This is a **SQLite lock contention** error, not a media-sync issue — despite w
 - `add_tags` / `remove_tags` - Manage tags
 - `get_media_dir_path` - Get media directory
 - `store_media_file` / `retrieve_media_file` / `delete_media_file` - Media operations (`store_media_file` accepts base64 `data`, `url`, or server-side `path`)
+- `update_note` / `update_note_fields` - Edit note fields and/or tags
 - `change_deck` - Move cards between decks
 - `cards_to_notes` - Convert card IDs to note IDs
 - `get_deck_config` - Get deck configuration

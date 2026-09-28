@@ -333,6 +333,36 @@ class TestMCPWrapper:
         assert front["value"] == "New"
         assert back["value"] == "B"
 
+    def test_update_note(self):
+        """Test update_note MCP tool (fields and/or tags)."""
+        from anki_connect_server.mcp_server import (
+            add_note,
+            get_notes_info,
+            update_note,
+        )
+
+        note_id = add_note("Default", "Basic", {"Front": "Old", "Back": "B"})
+        assert note_id is not None
+        assert update_note(note_id, fields={"Front": "F2"}, tags=["t1", "t2"]) is True
+        info = get_notes_info([note_id])[0]
+        fields = cast(dict[str, JsonObject], info["fields"])
+        assert fields["Front"]["value"] == "F2"
+        assert cast(list[str], info["tags"]) == ["t1", "t2"]
+
+        # Tags-only update must leave fields untouched.
+        assert update_note(note_id, tags=["only"]) is True
+        info = get_notes_info([note_id])[0]
+        assert cast(list[str], info["tags"]) == ["only"]
+        fields = cast(dict[str, JsonObject], info["fields"])
+        assert fields["Front"]["value"] == "F2"
+
+        # Fields-only update must leave tags untouched.
+        assert update_note(note_id, fields={"Back": "B2"}) is True
+        info = get_notes_info([note_id])[0]
+        assert cast(list[str], info["tags"]) == ["only"]
+        fields = cast(dict[str, JsonObject], info["fields"])
+        assert fields["Back"]["value"] == "B2"
+
     def test_update_model_templates_and_styling(self):
         """Test update_model_templates / update_model_styling MCP tools."""
         from anki_connect_server.mcp_server import (
