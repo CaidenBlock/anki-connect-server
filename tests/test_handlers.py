@@ -299,6 +299,15 @@ class TestNoteHandlers:
         assert result[0] is True
 
     @pytest.mark.asyncio
+    async def test_handle_can_add_notes_does_not_persist(self, anki_wrapper):
+        """canAddNotes must not persist notes to the database."""
+        result = await handle_can_add_notes(
+            anki_wrapper, AddNotesParams(notes=[_note(front="NotPersisted")])
+        )
+        assert result == [True]
+        assert anki_wrapper.find_notes("NotPersisted") == []
+
+    @pytest.mark.asyncio
     async def test_handle_find_notes(self, anki_wrapper):
         """Test findNotes handler."""
         anki_wrapper.add_note(_note(front="FindTest"))

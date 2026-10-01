@@ -535,7 +535,40 @@ class AnkiWrapper:
         return [self.add_note(note) for note in notes]
 
     def can_add_notes(self, notes: list[JsonObject]) -> list[bool]:
-        return [bool(self.add_note(n)) for n in notes]
+        return [self._can_add_note(n) for n in notes]
+
+    def _can_add_note(self, note: JsonObject) -> bool:
+        try:
+            model_name = note.get("modelName")
+            if not model_name or not isinstance(model_name, str):
+                return False
+            notetype = self._get_model_by_name(model_name)
+            if not notetype:
+                return False
+            deck_name = note.get("deckName")
+            if not deck_name or not isinstance(deck_name, str):
+                return False
+            deck = self.col.decks.by_name(deck_name)
+            if not deck:
+                return False
+            anki_note = Note(self.col, notetype)
+            nt = anki_note.note_type()
+            if nt is not None:
+                nt["did"] = deck["id"]
+            fields = note.get("fields", {})
+            if isinstance(fields, dict):
+                anki_keys = list(anki_note.keys())
+                anki_keys_lower = {k.lower(): k for k in anki_keys}
+                for name, value in fields.items():
+                    target_key = anki_keys_lower.get(name.lower(), name)
+                    if target_key in anki_note:
+                        anki_note[target_key] = str(value) if value is not None else ""
+            tags = note.get("tags")
+            if isinstance(tags, list):
+                anki_note.tags = [str(t) for t in tags]
+            return not bool(anki_note.dupeOrEmpty())
+        except Exception:
+            return False
 
     def update_note_fields(self, note: JsonObject) -> None:
         note_id = note.get("id")
